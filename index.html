@@ -10,12 +10,15 @@
 </head>
 <body>
   <main class="app">
-    <ul id="list" class="list"></ul>
-    <button type="button" id="add" class="add">+ Add item</button>
+    <div class="column">
+      <ul id="list" class="list"></ul>
+      <button type="button" id="add" class="add">+ add item</button>
+    </div>
   </main>
   <div id="saved" class="saved" role="status" aria-live="polite" hidden>Saved.</div>
   <div id="menu" class="menu" role="menu" hidden>
     <button type="button" data-action="edit">Edit</button>
+    <button type="button" data-action="delete">Delete</button>
   </div>
   <script src="./vendor/supabase.js"></script>
   <script src="./supabase-config.js"></script>

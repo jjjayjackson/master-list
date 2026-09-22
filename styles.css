@@ -2,9 +2,7 @@
   --bg: #000;
   --text: #f2f2f2;
   --muted: rgba(242, 242, 242, 0.48);
-  --row: #1c1c1e;
-  --input-bg: #1c1c1e;
-  --input-border: rgba(242, 242, 242, 0.42);
+  --row: #000;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   color-scheme: dark;
@@ -37,32 +35,40 @@ body {
   padding: calc(var(--safe-top) + 28px) 20px calc(var(--safe-bottom) + 28px);
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: max-content;
+  max-width: 100%;
 }
 
 .list {
   list-style: none;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  width: max-content;
+  max-width: 100%;
 }
 
 .row {
   display: flex;
   flex-direction: column;
-  padding-bottom: 6px;
-}
-
-.parent,
-.note,
-.note-add {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 36px;
-  align-items: start;
-  column-gap: 10px;
+  align-items: flex-start;
+  max-width: 100%;
+  padding-bottom: 8px;
 }
 
 .parent {
+  display: flex;
   align-items: center;
-  min-height: 56px;
+  column-gap: 10px;
+  max-width: 100%;
+  min-height: 40px;
 }
 
 .row.is-dragging {
@@ -72,7 +78,7 @@ body {
 .handle {
   flex: 0 0 auto;
   width: 28px;
-  height: 44px;
+  height: 40px;
   border: 0;
   background: transparent;
   color: var(--muted);
@@ -89,22 +95,30 @@ body {
 
 .row input,
 .item-view {
-  width: 100%;
+  width: auto;
+  max-width: min(64vw, 520px);
   min-width: 0;
-  height: 40px;
-  padding: 0 10px;
-  border: 1px solid var(--input-border);
-  border-radius: 8px;
-  background: var(--input-bg);
+  height: auto;
+  padding: 8px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--text);
+  caret-color: var(--text);
   font: inherit;
   font-size: 17px;
+  line-height: 1.3;
+  text-align: left;
   outline: none;
 }
 
+.row input {
+  field-sizing: content;
+  min-width: 2ch;
+}
+
 .item-view {
-  display: flex;
-  align-items: center;
+  display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -115,12 +129,15 @@ body {
 .row input:focus-visible,
 .note-text:focus,
 .note-text:focus-visible {
-  border-color: rgba(242, 242, 242, 0.7);
+  outline: none;
 }
 
 .note-add {
   display: none;
   align-items: center;
+  width: max-content;
+  max-width: min(480px, calc(100vw - var(--column-left, 20px) - 58px));
+  margin-left: 38px;
   height: 28px;
   margin: 0 0 4px;
   padding: 0;
@@ -135,7 +152,7 @@ body {
 
 .row:hover .note-add,
 .row:focus-within .note-add {
-  display: grid;
+  display: flex;
 }
 
 .row.has-note .note-add,
@@ -150,28 +167,34 @@ body {
   flex: 0 0 auto;
   width: 10px;
   height: 12px;
-  margin-top: 10px;
+  margin-top: 2px;
   border-left: 1px solid rgba(242, 242, 242, 0.28);
   border-bottom: 1px solid rgba(242, 242, 242, 0.28);
   border-bottom-left-radius: 3px;
 }
 
 .note-add-label {
-  grid-column: 2;
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  padding-left: 4px;
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  width: max-content;
+  max-width: min(480px, calc(100vw - var(--column-left, 20px) - 58px));
+  margin-left: 38px;
+  margin-bottom: 6px;
 }
 
 .note-body {
-  grid-column: 2;
   display: flex;
+  flex: 1;
   align-items: flex-start;
   gap: 8px;
   min-width: 0;
-  padding-left: 4px;
   padding-bottom: 6px;
 }
 
@@ -187,15 +210,17 @@ body {
 .note-text,
 .note-view {
   display: block;
-  width: 100%;
+  width: auto;
+  max-width: min(420px, 80vw);
   min-width: 0;
-  min-height: calc(1.4em + 16px);
-  max-height: calc(1.4em * 8 + 16px);
-  padding: 8px 10px;
-  border: 1px solid rgba(242, 242, 242, 0.22);
-  border-radius: 8px;
-  background: var(--input-bg);
+  min-height: 1.4em;
+  max-height: calc(1.4em * 8);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--muted);
+  caret-color: var(--muted);
   font: inherit;
   font-size: 14px;
   line-height: 1.4;
@@ -215,10 +240,9 @@ body {
 }
 
 .note-save {
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid rgba(242, 242, 242, 0.28);
-  border-radius: 8px;
+  height: 28px;
+  padding: 0;
+  border: 0;
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -230,10 +254,9 @@ body {
   display: none;
   width: 100%;
   min-width: 0;
-  padding: 6px 10px;
-  border: 1px solid rgba(242, 242, 242, 0.16);
-  border-radius: 8px;
-  background: var(--input-bg);
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--muted);
   font: inherit;
   font-size: 14px;
@@ -254,8 +277,7 @@ body {
   display: block;
 }
 
-.note-toggle,
-.note-remove {
+.note-toggle {
   width: 36px;
   height: 28px;
   border: 0;
@@ -276,24 +298,10 @@ body {
   font-size: 12px;
 }
 
-.note-remove {
-  font-size: 18px;
-}
-
-.remove {
-  flex: 0 0 auto;
-  width: 36px;
-  height: 44px;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
-}
-
 .add {
+  align-self: flex-start;
   margin-top: 4px;
+  margin-left: 38px;
   height: 52px;
   border: 0;
   background: transparent;
@@ -305,11 +313,9 @@ body {
 }
 
 .handle:focus-visible,
-.remove:focus-visible,
 .add:focus-visible,
 .note-add:focus-visible,
 .note-toggle:focus-visible,
-.note-remove:focus-visible,
 .note-save:focus-visible,
 .menu button:focus-visible {
   outline: 2px solid rgba(242, 242, 242, 0.45);
@@ -322,12 +328,13 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 120px;
-  max-height: min(160px, calc(100vh - 16px));
+  max-height: min(200px, calc(100vh - 16px));
   overflow: auto;
   padding: 4px;
-  border-radius: 10px;
-  background: var(--row);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(242, 242, 242, 0.28);
+  border-radius: 0;
+  background: #000;
+  box-shadow: none;
 }
 
 .menu[hidden] {
@@ -338,13 +345,17 @@ body {
   height: 36px;
   padding: 0 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   color: var(--text);
   font: inherit;
   font-size: 14px;
   text-align: left;
   cursor: pointer;
+}
+
+.menu button[hidden] {
+  display: none;
 }
 
 .menu button:hover {

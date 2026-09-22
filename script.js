@@ -20,6 +20,7 @@ const supabase = window.supabase.createClient(
 );
 
 const listEl = document.getElementById("list");
+const columnEl = document.querySelector(".column");
 const addEl = document.getElementById("add");
 const savedEl = document.getElementById("saved");
 const menuEl = document.getElementById("menu");
@@ -163,6 +164,17 @@ function hideMenu() {
   menuContext = null;
 }
 
+function removeItem(id) {
+  if (editing?.id === id) {
+    editing = null;
+    editSnapshot = null;
+  }
+  items = items.filter((entry) => entry.id !== id);
+  saveLocal();
+  deleteCloud(id);
+  render();
+}
+
 function showMenu(x, y, id, target) {
   menuContext = { id, target };
   menuEl.hidden = false;
@@ -248,12 +260,26 @@ function focusField(field) {
   });
 }
 
+function placeColumn() {
+  const fields = [...listEl.querySelectorAll(".item-view, input.item")];
+  const textWidth = fields.reduce((max, el) => Math.max(max, el.offsetWidth), 0);
+  const viewport = document.documentElement.clientWidth;
+  const naturalLeft = (fields[0] || addEl).getBoundingClientRect().left;
+  const block = fields.length ? textWidth : addEl.offsetWidth;
+  const target = Math.max(16, Math.round((viewport - block) / 2));
+  const current = parseFloat(columnEl.style.marginLeft) || 0;
+  const next = Math.max(0, current + target - naturalLeft);
+  columnEl.style.marginLeft = `${next}px`;
+  columnEl.style.setProperty("--column-left", `${next}px`);
+}
+
 function render() {
   hideMenu();
   listEl.replaceChildren();
   for (const item of items) {
     listEl.append(rowEl(item));
   }
+  placeColumn();
 }
 
 function rowEl(item) {
@@ -290,6 +316,7 @@ function rowEl(item) {
       const entry = findItem(item.id);
       if (!entry) return;
       entry.text = input.value;
+      placeColumn();
     });
     input.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
@@ -311,24 +338,7 @@ function rowEl(item) {
     itemField = view;
   }
 
-  const remove = document.createElement("button");
-  remove.type = "button";
-  remove.className = "remove";
-  remove.setAttribute("aria-label", "Remove");
-  remove.textContent = "×";
-  remove.addEventListener("click", () => {
-    const id = item.id;
-    if (editing?.id === id) {
-      editing = null;
-      editSnapshot = null;
-    }
-    items = items.filter((entry) => entry.id !== id);
-    saveLocal();
-    deleteCloud(id);
-    render();
-  });
-
-  parent.append(handle, itemField, remove);
+  parent.append(handle, itemField);
   li.append(parent);
 
   const addNote = document.createElement("button");
@@ -384,7 +394,6 @@ function noteEl(item) {
   preview.className = "note-preview";
   preview.textContent = item.note.trim() || "Note";
   preview.addEventListener("click", () => setNoteCollapsed(item.id, false));
-  preview.addEventListener("contextmenu", (event) => openContextMenu(event, item.id, "note"));
 
   if (editingNote && !item.noteCollapsed) {
     const editor = document.createElement("div");
@@ -421,7 +430,6 @@ function noteEl(item) {
     const view = document.createElement("div");
     view.className = "note-view";
     view.textContent = item.note;
-    view.addEventListener("contextmenu", (event) => openContextMenu(event, item.id, "note"));
     body.append(elbow, view, preview);
   }
 
@@ -437,24 +445,24 @@ function noteEl(item) {
     setNoteCollapsed(item.id, !findItem(item.id)?.noteCollapsed);
   });
 
-  const removeNote = document.createElement("button");
-  removeNote.type = "button";
-  removeNote.className = "note-remove";
-  removeNote.setAttribute("aria-label", "Remove note");
-  removeNote.textContent = "×";
-  removeNote.addEventListener("click", () => {
-    const entry = findItem(item.id);
-    if (!entry) return;
-    entry.note = null;
-    entry.noteCollapsed = false;
-    saveLocal();
-    saveCloud();
-    render();
-  });
-
-  actions.append(toggle, removeNote);
+  actions.append(toggle);
   note.append(body, actions);
+  note.addEventListener("contextmenu", (event) => openContextMenu(event, item.id, "note"));
   return note;
+}
+
+function removeNote(id) {
+  const entry = findItem(id);
+  if (!entry) return;
+  if (editing?.id === id && editing.target === "note") {
+    editing = null;
+    editSnapshot = null;
+  }
+  entry.note = null;
+  entry.noteCollapsed = false;
+  saveLocal();
+  saveCloud();
+  render();
 }
 
 function setNoteCollapsed(id, collapsed) {
@@ -552,9 +560,22 @@ addEl.addEventListener("click", () => {
 });
 
 menuEl.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-action='edit']");
+  const button = event.target.closest("[data-action]");
   if (!button || !menuContext) return;
-  beginEdit(menuContext.id, menuContext.target);
+  const { id, target } = menuContext;
+  if (button.dataset.action === "edit") {
+    beginEdit(id, target);
+    return;
+  }
+  if (button.dataset.action === "delete" && target === "item") {
+    hideMenu();
+    removeItem(id);
+    return;
+  }
+  if (button.dataset.action === "delete" && target === "note") {
+    hideMenu();
+    removeNote(id);
+  }
 });
 
 document.addEventListener("pointerdown", (event) => {
@@ -567,7 +588,10 @@ document.addEventListener("keydown", (event) => {
   hideMenu();
 });
 
-window.addEventListener("resize", hideMenu);
+window.addEventListener("resize", () => {
+  hideMenu();
+  placeColumn();
+});
 window.addEventListener("scroll", hideMenu, true);
 
 window.addEventListener("pointermove", onPointerMove);
