@@ -22,12 +22,15 @@ const supabase = window.supabase.createClient(
 const listEl = document.getElementById("list");
 const addEl = document.getElementById("add");
 const savedEl = document.getElementById("saved");
+const menuEl = document.getElementById("menu");
 
 let items = [];
 let ready = false;
 let drag = null;
+let editing = null;
+let editSnapshot = null;
+let menuContext = null;
 let savedTimer = 0;
-let cloudTimer = 0;
 let cloudQueue = Promise.resolve(true);
 
 function newId() {
@@ -102,15 +105,7 @@ function enqueue(task) {
   return run;
 }
 
-function scheduleCloud() {
-  clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(() => {
-    saveCloud();
-  }, 400);
-}
-
 function saveCloud() {
-  clearTimeout(cloudTimer);
   return enqueue(async () => {
     if (!items.length) return true;
     const rows = items.map(toRow);
@@ -124,7 +119,6 @@ function saveCloud() {
 }
 
 function deleteCloud(id) {
-  clearTimeout(cloudTimer);
   return enqueue(async () => {
     const { error } = await supabase.from(TABLE).delete().eq("id", id);
     if (error) {
@@ -164,42 +158,101 @@ function showToast(message) {
   }, 2200);
 }
 
-function bindDraft(field, apply) {
-  field.enterKeyHint = "done";
-  field.addEventListener("input", () => {
-    apply();
-    saveLocal();
-    scheduleCloud();
-  });
-  field.addEventListener("change", () => {
-    apply();
-    saveLocal();
-    scheduleCloud();
-  });
-  field.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" || event.isComposing) return;
-    if (field.tagName === "TEXTAREA" && event.shiftKey) return;
-    event.preventDefault();
-    apply();
-    saveLocal();
-    field.blur();
-    saveCloud().then((ok) => {
-      showToast(ok ? "Saved." : "Not saved.");
-    });
+function hideMenu() {
+  menuEl.hidden = true;
+  menuContext = null;
+}
+
+function showMenu(x, y, id, target) {
+  menuContext = { id, target };
+  menuEl.hidden = false;
+  const margin = 8;
+  const rect = menuEl.getBoundingClientRect();
+  let top = y;
+  let left = x;
+  if (top + rect.height > window.innerHeight - margin) top = y - rect.height;
+  if (top < margin) top = Math.max(margin, window.innerHeight - margin - rect.height);
+  if (left + rect.width > window.innerWidth - margin) left = window.innerWidth - margin - rect.width;
+  if (left < margin) left = margin;
+  menuEl.style.top = `${top}px`;
+  menuEl.style.left = `${left}px`;
+}
+
+function openContextMenu(event, id, target) {
+  event.preventDefault();
+  showMenu(event.clientX, event.clientY, id, target);
+}
+
+function revertEdit() {
+  if (!editing) return;
+  const entry = findItem(editing.id);
+  if (entry) {
+    if (editing.target === "item") entry.text = editSnapshot ?? "";
+    else if (entry.note != null) entry.note = editSnapshot ?? "";
+  }
+  editing = null;
+  editSnapshot = null;
+}
+
+function beginEdit(id, target) {
+  if (editing && (editing.id !== id || editing.target !== target)) revertEdit();
+  const entry = findItem(id);
+  if (!entry) return;
+  if (target === "note") {
+    if (entry.note == null) return;
+    if (entry.noteCollapsed) {
+      entry.noteCollapsed = false;
+      saveLocal();
+      saveCloud();
+    }
+  }
+  editSnapshot = target === "item" ? entry.text : entry.note;
+  editing = { id, target };
+  hideMenu();
+  render();
+}
+
+function cancelEdit() {
+  revertEdit();
+  render();
+}
+
+function commitItem(id, value) {
+  const entry = findItem(id);
+  if (!entry) return;
+  entry.text = value;
+  editing = null;
+  editSnapshot = null;
+  saveLocal();
+  const pending = saveCloud();
+  render();
+  pending.then((ok) => showToast(ok ? "Saved." : "Not saved."));
+}
+
+function commitNote(id, value) {
+  const entry = findItem(id);
+  if (!entry || entry.note == null) return;
+  entry.note = value;
+  editing = null;
+  editSnapshot = null;
+  saveLocal();
+  saveCloud();
+  render();
+}
+
+function focusField(field) {
+  requestAnimationFrame(() => {
+    field.focus();
+    const end = field.value.length;
+    if (typeof field.setSelectionRange === "function") field.setSelectionRange(end, end);
   });
 }
 
-function render(focusId, focusTarget) {
+function render() {
+  hideMenu();
   listEl.replaceChildren();
   for (const item of items) {
     listEl.append(rowEl(item));
-  }
-  if (!focusId) return;
-  const row = listEl.querySelector(`[data-id="${focusId}"]`);
-  if (focusTarget === "note") {
-    row?.querySelector(".note-text")?.focus();
-  } else {
-    row?.querySelector("input.item")?.focus();
   }
 }
 
@@ -208,6 +261,7 @@ function rowEl(item) {
   li.className = "row";
   li.dataset.id = item.id;
   if (item.note != null) li.classList.add("has-note");
+  if (editing?.id === item.id && editing.target === "item") li.classList.add("is-editing");
 
   const parent = document.createElement("div");
   parent.className = "parent";
@@ -222,17 +276,40 @@ function rowEl(item) {
   handle.addEventListener("dragstart", onHandleDragStart);
   handle.addEventListener("dragend", onHandleDragEnd);
 
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = "item";
-  input.value = item.text;
-  input.setAttribute("aria-label", "Item");
-  input.autocomplete = "off";
-  bindDraft(input, () => {
-    const entry = findItem(item.id);
-    if (!entry) return;
-    entry.text = input.value;
-  });
+  const editingItem = editing?.id === item.id && editing.target === "item";
+  let itemField;
+  if (editingItem) {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "item";
+    input.value = item.text;
+    input.setAttribute("aria-label", "Item");
+    input.autocomplete = "off";
+    input.enterKeyHint = "done";
+    input.addEventListener("input", () => {
+      const entry = findItem(item.id);
+      if (!entry) return;
+      entry.text = input.value;
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        cancelEdit();
+        return;
+      }
+      if (event.key !== "Enter" || event.isComposing) return;
+      event.preventDefault();
+      commitItem(item.id, input.value);
+    });
+    itemField = input;
+    focusField(input);
+  } else {
+    const view = document.createElement("div");
+    view.className = "item-view";
+    view.textContent = item.text;
+    view.addEventListener("contextmenu", (event) => openContextMenu(event, item.id, "item"));
+    itemField = view;
+  }
 
   const remove = document.createElement("button");
   remove.type = "button";
@@ -241,13 +318,17 @@ function rowEl(item) {
   remove.textContent = "×";
   remove.addEventListener("click", () => {
     const id = item.id;
+    if (editing?.id === id) {
+      editing = null;
+      editSnapshot = null;
+    }
     items = items.filter((entry) => entry.id !== id);
     saveLocal();
     deleteCloud(id);
     render();
   });
 
-  parent.append(handle, input, remove);
+  parent.append(handle, itemField, remove);
   li.append(parent);
 
   const addNote = document.createElement("button");
@@ -270,7 +351,7 @@ function rowEl(item) {
     entry.noteCollapsed = false;
     saveLocal();
     saveCloud();
-    render(item.id, "note");
+    beginEdit(item.id, "note");
   });
   li.append(addNote);
 
@@ -297,25 +378,52 @@ function noteEl(item) {
   const body = document.createElement("div");
   body.className = "note-body";
 
-  const textarea = document.createElement("textarea");
-  textarea.className = "note-text";
-  textarea.setAttribute("aria-label", "Note");
-  textarea.value = item.note;
-  textarea.rows = 1;
-  bindDraft(textarea, () => {
-    const entry = findItem(item.id);
-    if (!entry) return;
-    entry.note = textarea.value;
-    autosizeNote(textarea);
-  });
-
+  const editingNote = editing?.id === item.id && editing.target === "note";
   const preview = document.createElement("button");
   preview.type = "button";
   preview.className = "note-preview";
   preview.textContent = item.note.trim() || "Note";
   preview.addEventListener("click", () => setNoteCollapsed(item.id, false));
+  preview.addEventListener("contextmenu", (event) => openContextMenu(event, item.id, "note"));
 
-  body.append(elbow, textarea, preview);
+  if (editingNote && !item.noteCollapsed) {
+    const editor = document.createElement("div");
+    editor.className = "note-editor";
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "note-text";
+    textarea.setAttribute("aria-label", "Note");
+    textarea.value = item.note;
+    textarea.rows = 1;
+    textarea.addEventListener("input", () => {
+      const entry = findItem(item.id);
+      if (!entry) return;
+      entry.note = textarea.value;
+      autosizeNote(textarea);
+    });
+    textarea.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      cancelEdit();
+    });
+
+    const saveNote = document.createElement("button");
+    saveNote.type = "button";
+    saveNote.className = "note-save";
+    saveNote.textContent = "Save";
+    saveNote.addEventListener("click", () => commitNote(item.id, textarea.value));
+
+    editor.append(textarea, saveNote);
+    body.append(elbow, editor);
+    focusField(textarea);
+    requestAnimationFrame(() => autosizeNote(textarea));
+  } else {
+    const view = document.createElement("div");
+    view.className = "note-view";
+    view.textContent = item.note;
+    view.addEventListener("contextmenu", (event) => openContextMenu(event, item.id, "note"));
+    body.append(elbow, view, preview);
+  }
 
   const actions = document.createElement("div");
   actions.className = "note-actions";
@@ -346,9 +454,6 @@ function noteEl(item) {
 
   actions.append(toggle, removeNote);
   note.append(body, actions);
-  if (!item.noteCollapsed) {
-    requestAnimationFrame(() => autosizeNote(textarea));
-  }
   return note;
 }
 
@@ -443,8 +548,27 @@ addEl.addEventListener("click", () => {
   items.push(item);
   saveLocal();
   saveCloud();
-  render(item.id);
+  beginEdit(item.id, "item");
 });
+
+menuEl.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-action='edit']");
+  if (!button || !menuContext) return;
+  beginEdit(menuContext.id, menuContext.target);
+});
+
+document.addEventListener("pointerdown", (event) => {
+  if (menuEl.hidden || menuEl.contains(event.target)) return;
+  hideMenu();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || menuEl.hidden) return;
+  hideMenu();
+});
+
+window.addEventListener("resize", hideMenu);
+window.addEventListener("scroll", hideMenu, true);
 
 window.addEventListener("pointermove", onPointerMove);
 window.addEventListener("pointerup", onPointerUp);
