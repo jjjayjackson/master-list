@@ -24,7 +24,7 @@ body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
@@ -55,7 +55,7 @@ body {
 .note,
 .note-add {
   display: grid;
-  grid-template-columns: 28px minmax(0, 6fr) minmax(0, 4fr) 36px;
+  grid-template-columns: 28px minmax(0, 1fr) 36px;
   align-items: start;
   column-gap: 10px;
 }
@@ -99,10 +99,6 @@ body {
   font: inherit;
   font-size: 17px;
   outline: none;
-}
-
-.row input.duration {
-  font-variant-numeric: tabular-nums;
 }
 
 .row input:focus,
@@ -150,7 +146,7 @@ body {
 }
 
 .note-add-label {
-  grid-column: 2 / 4;
+  grid-column: 2;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -159,7 +155,7 @@ body {
 }
 
 .note-body {
-  grid-column: 2 / 4;
+  grid-column: 2;
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -226,7 +222,7 @@ body {
 }
 
 .note-actions {
-  grid-column: 4;
+  grid-column: 3;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -269,43 +265,46 @@ body {
 .add:focus-visible,
 .note-add:focus-visible,
 .note-toggle:focus-visible,
-.note-remove:focus-visible,
-.duration-menu button:focus-visible {
+.note-remove:focus-visible {
   outline: 2px solid rgba(242, 242, 242, 0.45);
   outline-offset: 2px;
 }
 
-.duration-menu {
+.saved {
   position: fixed;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  min-width: 88px;
-  max-height: min(160px, calc(100vh - 16px));
-  overflow: auto;
-  padding: 4px;
-  border-radius: 10px;
-  background: var(--row);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-}
-
-.duration-menu[hidden] {
-  display: none;
-}
-
-.duration-menu button {
-  height: 36px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + 28px);
+  z-index: 20;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(44, 44, 46, 0.94);
   color: var(--text);
-  font: inherit;
-  font-size: 15px;
-  text-align: left;
-  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.2;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  opacity: 0;
 }
 
-.duration-menu button:hover {
-  background: rgba(242, 242, 242, 0.08);
+.saved.is-visible {
+  animation: saved-in 2.2s ease forwards;
+}
+
+@keyframes saved-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px);
+  }
+  8% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  78% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(0);
+  }
 }

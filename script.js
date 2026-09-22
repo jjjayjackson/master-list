@@ -1,18 +1,54 @@
 const STORAGE_KEY = "master-list";
+const TABLE = "master_list_items";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const supabase = window.supabase.createClient(
+  window.MASTER_LIST_SUPABASE.url,
+  window.MASTER_LIST_SUPABASE.key,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storage: {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {},
+      },
+    },
+  },
+);
 
 const listEl = document.getElementById("list");
 const addEl = document.getElementById("add");
-const durationMenuEl = document.getElementById("duration-menu");
+const savedEl = document.getElementById("saved");
 
-let items = load();
+let items = [];
+let ready = false;
 let drag = null;
-let durationInput = null;
+let savedTimer = 0;
+let cloudTimer = 0;
+let cloudQueue = Promise.resolve(true);
 
 function newId() {
   return crypto.randomUUID();
 }
 
-function load() {
+function isUuid(value) {
+  return typeof value === "string" && UUID_RE.test(value);
+}
+
+function normalizeItem(item, index) {
+  return {
+    id: isUuid(item.id) ? item.id : newId(),
+    text: typeof item.text === "string" ? item.text : "",
+    note: typeof item.note === "string" ? item.note : null,
+    noteCollapsed: Boolean(item.noteCollapsed),
+    position: index,
+  };
+}
+
+function loadLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
@@ -20,24 +56,140 @@ function load() {
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter((item) => item && typeof item === "object")
-      .map((item) => ({
-        id: typeof item.id === "string" && item.id ? item.id : newId(),
-        text: typeof item.text === "string" ? item.text : "",
-        duration: typeof item.duration === "string" ? item.duration : "",
-        note: typeof item.note === "string" ? item.note : null,
-        noteCollapsed: Boolean(item.noteCollapsed),
-      }));
+      .map(normalizeItem);
   } catch {
     return [];
   }
 }
 
-function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+function saveLocal() {
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(items.map(({ id, text, note, noteCollapsed }) => ({
+      id,
+      text,
+      note,
+      noteCollapsed,
+    }))),
+  );
+}
+
+function toRow(item, index) {
+  return {
+    id: item.id,
+    text: item.text,
+    note: item.note,
+    note_collapsed: Boolean(item.noteCollapsed),
+    position: index,
+  };
+}
+
+function fromRow(row) {
+  return {
+    id: row.id,
+    text: typeof row.text === "string" ? row.text : "",
+    note: typeof row.note === "string" ? row.note : null,
+    noteCollapsed: Boolean(row.note_collapsed),
+  };
+}
+
+function enqueue(task) {
+  const run = cloudQueue.then(task, task);
+  cloudQueue = run.then(
+    (ok) => ok !== false,
+    () => false,
+  );
+  return run;
+}
+
+function scheduleCloud() {
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(() => {
+    saveCloud();
+  }, 400);
+}
+
+function saveCloud() {
+  clearTimeout(cloudTimer);
+  return enqueue(async () => {
+    if (!items.length) return true;
+    const rows = items.map(toRow);
+    const { error } = await supabase.from(TABLE).upsert(rows);
+    if (error) {
+      console.error(error);
+      return false;
+    }
+    return true;
+  });
+}
+
+function deleteCloud(id) {
+  clearTimeout(cloudTimer);
+  return enqueue(async () => {
+    const { error } = await supabase.from(TABLE).delete().eq("id", id);
+    if (error) {
+      console.error(error);
+      return false;
+    }
+    if (items.length) {
+      const { error: orderError } = await supabase.from(TABLE).upsert(items.map(toRow));
+      if (orderError) {
+        console.error(orderError);
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
+async function loadCloud() {
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select("id, text, note, note_collapsed, position")
+    .order("position", { ascending: true });
+  if (error) throw error;
+  return (data || []).map(fromRow);
+}
+
+function showToast(message) {
+  savedEl.textContent = message;
+  savedEl.hidden = false;
+  savedEl.classList.remove("is-visible");
+  void savedEl.offsetWidth;
+  savedEl.classList.add("is-visible");
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(() => {
+    savedEl.classList.remove("is-visible");
+    savedEl.hidden = true;
+  }, 2200);
+}
+
+function bindDraft(field, apply) {
+  field.enterKeyHint = "done";
+  field.addEventListener("input", () => {
+    apply();
+    saveLocal();
+    scheduleCloud();
+  });
+  field.addEventListener("change", () => {
+    apply();
+    saveLocal();
+    scheduleCloud();
+  });
+  field.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.isComposing) return;
+    if (field.tagName === "TEXTAREA" && event.shiftKey) return;
+    event.preventDefault();
+    apply();
+    saveLocal();
+    field.blur();
+    saveCloud().then((ok) => {
+      showToast(ok ? "Saved." : "Not saved.");
+    });
+  });
 }
 
 function render(focusId, focusTarget) {
-  hideDurationMenu();
   listEl.replaceChildren();
   for (const item of items) {
     listEl.append(rowEl(item));
@@ -76,33 +228,10 @@ function rowEl(item) {
   input.value = item.text;
   input.setAttribute("aria-label", "Item");
   input.autocomplete = "off";
-  function commitText() {
+  bindDraft(input, () => {
     const entry = findItem(item.id);
     if (!entry) return;
     entry.text = input.value;
-    save();
-  }
-  input.addEventListener("input", commitText);
-  input.addEventListener("change", commitText);
-
-  const duration = document.createElement("input");
-  duration.type = "text";
-  duration.className = "duration";
-  duration.value = item.duration;
-  duration.setAttribute("aria-label", "Duration");
-  duration.autocomplete = "off";
-  function commitDuration() {
-    const entry = findItem(item.id);
-    if (!entry) return;
-    entry.duration = duration.value;
-    save();
-  }
-  duration.addEventListener("input", commitDuration);
-  duration.addEventListener("change", commitDuration);
-  duration.addEventListener("focus", () => {
-    requestAnimationFrame(() => {
-      if (document.activeElement === duration) showDurationMenu(duration);
-    });
   });
 
   const remove = document.createElement("button");
@@ -111,12 +240,14 @@ function rowEl(item) {
   remove.setAttribute("aria-label", "Remove");
   remove.textContent = "×";
   remove.addEventListener("click", () => {
-    items = items.filter((entry) => entry.id !== item.id);
-    save();
+    const id = item.id;
+    items = items.filter((entry) => entry.id !== id);
+    saveLocal();
+    deleteCloud(id);
     render();
   });
 
-  parent.append(handle, input, duration, remove);
+  parent.append(handle, input, remove);
   li.append(parent);
 
   const addNote = document.createElement("button");
@@ -137,7 +268,8 @@ function rowEl(item) {
     if (!entry || entry.note != null) return;
     entry.note = "";
     entry.noteCollapsed = false;
-    save();
+    saveLocal();
+    saveCloud();
     render(item.id, "note");
   });
   li.append(addNote);
@@ -170,11 +302,10 @@ function noteEl(item) {
   textarea.setAttribute("aria-label", "Note");
   textarea.value = item.note;
   textarea.rows = 1;
-  textarea.addEventListener("input", () => {
+  bindDraft(textarea, () => {
     const entry = findItem(item.id);
     if (!entry) return;
     entry.note = textarea.value;
-    save();
     autosizeNote(textarea);
   });
 
@@ -208,7 +339,8 @@ function noteEl(item) {
     if (!entry) return;
     entry.note = null;
     entry.noteCollapsed = false;
-    save();
+    saveLocal();
+    saveCloud();
     render();
   });
 
@@ -224,7 +356,8 @@ function setNoteCollapsed(id, collapsed) {
   const entry = findItem(id);
   if (!entry || entry.note == null) return;
   entry.noteCollapsed = Boolean(collapsed);
-  save();
+  saveLocal();
+  saveCloud();
   render();
 }
 
@@ -234,40 +367,13 @@ function autosizeNote(textarea) {
   textarea.style.height = `${Math.min(textarea.scrollHeight, max)}px`;
 }
 
-function hideDurationMenu() {
-  durationMenuEl.hidden = true;
-  durationInput = null;
-}
-
-function showDurationMenu(input) {
-  durationInput = input;
-  durationMenuEl.hidden = false;
-  const rect = input.getBoundingClientRect();
-  const menuRect = durationMenuEl.getBoundingClientRect();
-  const margin = 8;
-  const gap = 4;
-  let top = rect.bottom + gap;
-  if (top + menuRect.height > window.innerHeight - margin) {
-    top = rect.top - menuRect.height - gap;
-  }
-  if (top < margin) {
-    top = Math.max(margin, window.innerHeight - margin - menuRect.height);
-  }
-  let left = rect.left;
-  if (left + menuRect.width > window.innerWidth - margin) {
-    left = window.innerWidth - margin - menuRect.width;
-  }
-  if (left < margin) left = margin;
-  durationMenuEl.style.top = `${top}px`;
-  durationMenuEl.style.left = `${left}px`;
-}
-
 function syncOrderFromDom() {
   const ids = [...listEl.querySelectorAll(".row")].map((row) => row.dataset.id);
   items = ids
     .map((id) => items.find((item) => item.id === id))
     .filter(Boolean);
-  save();
+  saveLocal();
+  saveCloud();
 }
 
 function placeRow(row, clientY, over) {
@@ -332,38 +438,38 @@ listEl.addEventListener("dragover", (event) => {
 });
 
 addEl.addEventListener("click", () => {
-  const item = { id: newId(), text: "", duration: "", note: null, noteCollapsed: false };
+  if (!ready) return;
+  const item = { id: newId(), text: "", note: null, noteCollapsed: false };
   items.push(item);
-  save();
+  saveLocal();
+  saveCloud();
   render(item.id);
-});
-
-durationMenuEl.addEventListener("pointerdown", (event) => {
-  event.preventDefault();
-});
-
-durationMenuEl.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-fill]");
-  if (!button || !durationInput) return;
-  durationInput.value = button.dataset.fill;
-  durationInput.dispatchEvent(new Event("input"));
-  hideDurationMenu();
-});
-
-document.addEventListener("focusin", (event) => {
-  if (event.target.closest?.(".duration")) return;
-  if (durationMenuEl.contains(event.target)) return;
-  hideDurationMenu();
-});
-
-document.addEventListener("pointerdown", (event) => {
-  if (event.target.closest?.(".duration")) return;
-  if (durationMenuEl.contains(event.target)) return;
-  hideDurationMenu();
 });
 
 window.addEventListener("pointermove", onPointerMove);
 window.addEventListener("pointerup", onPointerUp);
 window.addEventListener("pointercancel", onPointerUp);
 
-render();
+async function boot() {
+  const local = loadLocal();
+  try {
+    const cloud = await loadCloud();
+    if (cloud.length) {
+      items = cloud;
+      saveLocal();
+    } else if (local.length) {
+      items = local;
+      saveLocal();
+      await saveCloud();
+    } else {
+      items = [];
+    }
+  } catch (error) {
+    console.error(error);
+    items = local;
+  }
+  ready = true;
+  render();
+}
+
+boot();

@@ -13,10 +13,9 @@
     <ul id="list" class="list"></ul>
     <button type="button" id="add" class="add">+ Add item</button>
   </main>
-  <div id="duration-menu" class="duration-menu" hidden>
-    <button type="button" data-fill="30m">30m</button>
-    <button type="button" data-fill="1hr">1hr</button>
-  </div>
+  <div id="saved" class="saved" role="status" aria-live="polite" hidden>Saved.</div>
+  <script src="./vendor/supabase.js"></script>
+  <script src="./supabase-config.js"></script>
   <script src="./script.js"></script>
 </body>
 </html>
