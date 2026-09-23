@@ -117,12 +117,36 @@ body {
   min-width: 2ch;
 }
 
+.mark-host {
+  position: relative;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+}
+
 .item-view {
   display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: default;
+}
+
+.saved-mark {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 0.15em;
+  color: #3ddc84;
+  font-size: 15px;
+  line-height: 1;
+  pointer-events: none;
+  animation: saved-mark 1.6s ease forwards;
+}
+
+@keyframes saved-mark {
+  0%,
+  70% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .row input:focus,
@@ -362,41 +386,3 @@ body {
   background: rgba(242, 242, 242, 0.08);
 }
 
-.saved {
-  position: fixed;
-  left: 50%;
-  bottom: calc(var(--safe-bottom) + 28px);
-  z-index: 20;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(44, 44, 46, 0.94);
-  color: var(--text);
-  font-size: 14px;
-  line-height: 1.2;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  pointer-events: none;
-  opacity: 0;
-}
-
-.saved.is-visible {
-  animation: saved-in 2.2s ease forwards;
-}
-
-@keyframes saved-in {
-  0% {
-    opacity: 0;
-    transform: translateX(-50%) translateY(6px);
-  }
-  8% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-  78% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(-50%) translateY(0);
-  }
-}

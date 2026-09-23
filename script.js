@@ -22,7 +22,6 @@ const supabase = window.supabase.createClient(
 const listEl = document.getElementById("list");
 const columnEl = document.querySelector(".column");
 const addEl = document.getElementById("add");
-const savedEl = document.getElementById("saved");
 const menuEl = document.getElementById("menu");
 
 let items = [];
@@ -31,7 +30,7 @@ let drag = null;
 let editing = null;
 let editSnapshot = null;
 let menuContext = null;
-let savedTimer = 0;
+let savedMarkTimer = 0;
 let cloudQueue = Promise.resolve(true);
 
 function newId() {
@@ -146,17 +145,26 @@ async function loadCloud() {
   return (data || []).map(fromRow);
 }
 
-function showToast(message) {
-  savedEl.textContent = message;
-  savedEl.hidden = false;
-  savedEl.classList.remove("is-visible");
-  void savedEl.offsetWidth;
-  savedEl.classList.add("is-visible");
-  clearTimeout(savedTimer);
-  savedTimer = setTimeout(() => {
-    savedEl.classList.remove("is-visible");
-    savedEl.hidden = true;
-  }, 2200);
+function savedMarkEl() {
+  const mark = document.createElement("span");
+  mark.className = "saved-mark";
+  mark.textContent = "✓";
+  mark.setAttribute("role", "status");
+  mark.setAttribute("aria-label", "Saved");
+  return mark;
+}
+
+function flashSaved(id, target) {
+  clearTimeout(savedMarkTimer);
+  listEl.querySelectorAll(".saved-mark").forEach((node) => node.remove());
+  const row = listEl.querySelector(`.row[data-id="${CSS.escape(id)}"]`);
+  const host = target === "item"
+    ? row?.querySelector(":scope > .parent .mark-host")
+    : row?.querySelector(":scope > .note .mark-host");
+  if (!host) return;
+  const mark = savedMarkEl();
+  host.append(mark);
+  savedMarkTimer = setTimeout(() => mark.remove(), 1700);
 }
 
 function hideMenu() {
@@ -238,7 +246,9 @@ function commitItem(id, value) {
   saveLocal();
   const pending = saveCloud();
   render();
-  pending.then((ok) => showToast(ok ? "Saved." : "Not saved."));
+  pending.then((ok) => {
+    if (ok) flashSaved(id, "item");
+  });
 }
 
 function commitNote(id, value) {
@@ -248,8 +258,11 @@ function commitNote(id, value) {
   editing = null;
   editSnapshot = null;
   saveLocal();
-  saveCloud();
+  const pending = saveCloud();
   render();
+  pending.then((ok) => {
+    if (ok) flashSaved(id, "note");
+  });
 }
 
 function focusField(field) {
@@ -335,7 +348,10 @@ function rowEl(item) {
     view.className = "item-view";
     view.textContent = item.text;
     view.addEventListener("contextmenu", (event) => openContextMenu(event, item.id, "item"));
-    itemField = view;
+    const host = document.createElement("div");
+    host.className = "mark-host";
+    host.append(view);
+    itemField = host;
   }
 
   parent.append(handle, itemField);
@@ -411,9 +427,24 @@ function noteEl(item) {
       autosizeNote(textarea);
     });
     textarea.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape") return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        cancelEdit();
+        return;
+      }
+      if (event.key !== "Enter" || event.isComposing) return;
       event.preventDefault();
-      cancelEdit();
+      if (event.metaKey) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        textarea.value = `${textarea.value.slice(0, start)}\n${textarea.value.slice(end)}`;
+        textarea.selectionStart = textarea.selectionEnd = start + 1;
+        const entry = findItem(item.id);
+        if (entry) entry.note = textarea.value;
+        autosizeNote(textarea);
+        return;
+      }
+      commitNote(item.id, textarea.value);
     });
 
     const saveNote = document.createElement("button");
@@ -430,7 +461,10 @@ function noteEl(item) {
     const view = document.createElement("div");
     view.className = "note-view";
     view.textContent = item.note;
-    body.append(elbow, view, preview);
+    const host = document.createElement("div");
+    host.className = "mark-host";
+    host.append(view);
+    body.append(elbow, host, preview);
   }
 
   const actions = document.createElement("div");
