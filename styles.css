@@ -1,8 +1,9 @@
 :root {
   --bg: #000;
-  --text: #f2f2f2;
-  --muted: rgba(242, 242, 242, 0.48);
-  --row: #000;
+  --text: #f5f5f7;
+  --muted: rgba(245, 245, 247, 0.72);
+  --line: rgba(245, 245, 247, 0.38);
+  --line-focus: rgba(245, 245, 247, 0.78);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   color-scheme: dark;
@@ -16,373 +17,138 @@
 
 html,
 body {
-  height: 100%;
+  min-height: 100%;
   background: var(--bg);
   color: var(--text);
 }
 
 body {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding:
+    calc(var(--safe-top) + 11vh)
+    24px
+    calc(var(--safe-bottom) + 72px);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  font-size: 17px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
 
-.app {
+.frame {
+  position: relative;
+  width: min(680px, 100%);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  transition: border-color 160ms ease;
+}
+
+.frame:focus-within {
+  border-color: var(--line-focus);
+}
+
+.editor {
+  display: block;
+  padding: 22px 24px 34px;
+}
+
+textarea {
+  display: block;
   width: 100%;
-  max-width: 900px;
-  min-height: 100%;
-  margin: 0 auto;
-  padding: calc(var(--safe-top) + 28px) 20px calc(var(--safe-bottom) + 28px);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.column {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  width: max-content;
-  max-width: 100%;
-}
-
-.list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  width: max-content;
-  max-width: 100%;
-}
-
-.row {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  max-width: 100%;
-  padding-bottom: 8px;
-}
-
-.parent {
-  display: flex;
-  align-items: center;
-  column-gap: 10px;
-  max-width: 100%;
-  min-height: 40px;
-}
-
-.row.is-dragging {
-  opacity: 0.45;
-}
-
-.handle {
-  flex: 0 0 auto;
-  width: 28px;
-  height: 40px;
+  min-height: 9.3em;
   border: 0;
   background: transparent;
-  color: var(--muted);
-  cursor: grab;
-  touch-action: none;
-  font-size: 16px;
-  letter-spacing: 1px;
-  line-height: 1;
-}
-
-.handle:active {
-  cursor: grabbing;
-}
-
-.row input,
-.item-view {
-  width: auto;
-  max-width: min(64vw, 520px);
-  min-width: 0;
-  height: auto;
-  padding: 8px 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--text);
+  color: inherit;
   caret-color: var(--text);
   font: inherit;
-  font-size: 17px;
-  line-height: 1.3;
-  text-align: left;
-  outline: none;
-}
-
-.row input {
-  field-sizing: content;
-  min-width: 2ch;
-}
-
-.mark-host {
-  position: relative;
-  width: max-content;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.item-view {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: default;
-}
-
-.saved-mark {
-  position: absolute;
-  left: calc(100% + 8px);
-  top: 0.15em;
-  color: #3ddc84;
-  font-size: 15px;
-  line-height: 1;
-  pointer-events: none;
-  animation: saved-mark 1.6s ease forwards;
-}
-
-@keyframes saved-mark {
-  0%,
-  70% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-.row input:focus,
-.row input:focus-visible,
-.note-text:focus,
-.note-text:focus-visible {
-  outline: none;
-}
-
-.note-add {
-  display: none;
-  align-items: center;
-  width: max-content;
-  max-width: min(480px, calc(100vw - var(--column-left, 20px) - 58px));
-  margin-left: 38px;
-  height: 28px;
-  margin: 0 0 4px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.row:hover .note-add,
-.row:focus-within .note-add {
-  display: flex;
-}
-
-.row.has-note .note-add,
-.row.has-note:hover .note-add,
-.row.has-note:focus-within .note-add,
-.row.is-editing .note-add {
-  display: none;
-}
-
-.note-add .elbow,
-.note .elbow {
-  flex: 0 0 auto;
-  width: 10px;
-  height: 12px;
-  margin-top: 2px;
-  border-left: 1px solid rgba(242, 242, 242, 0.28);
-  border-bottom: 1px solid rgba(242, 242, 242, 0.28);
-  border-bottom-left-radius: 3px;
-}
-
-.note-add-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.note {
-  display: flex;
-  align-items: flex-start;
-  width: max-content;
-  max-width: min(480px, calc(100vw - var(--column-left, 20px) - 58px));
-  margin-left: 38px;
-  margin-bottom: 6px;
-}
-
-.note-body {
-  display: flex;
-  flex: 1;
-  align-items: flex-start;
-  gap: 8px;
-  min-width: 0;
-  padding-bottom: 6px;
-}
-
-.note-editor {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  min-width: 0;
-}
-
-.note-text,
-.note-view {
-  display: block;
-  width: auto;
-  max-width: min(420px, 80vw);
-  min-width: 0;
-  min-height: 1.4em;
-  max-height: calc(1.4em * 8);
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--muted);
-  caret-color: var(--muted);
-  font: inherit;
-  font-size: 14px;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  overflow-y: auto;
-  outline: none;
-}
-
-.note-text {
+  letter-spacing: 0.011em;
   resize: none;
+  overflow: hidden;
+  outline: none;
 }
 
-.note-view {
-  flex: 1;
-  cursor: default;
+textarea[readonly] {
+  cursor: text;
 }
 
-.note-save {
-  height: 28px;
-  padding: 0;
+textarea::selection {
+  background: rgba(245, 245, 247, 0.22);
+}
+
+.actions {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 0 14px;
+  background: var(--bg);
+  transform: translate(-50%, 50%);
+}
+
+button {
+  min-width: 4.6em;
+  min-height: 40px;
   border: 0;
   background: transparent;
-  color: var(--text);
+  color: var(--muted);
   font: inherit;
   font-size: 13px;
+  letter-spacing: 0.04em;
   cursor: pointer;
 }
 
-.note-preview {
-  display: none;
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 14px;
-  line-height: 1.4;
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-}
-
-.note.is-collapsed .note-text,
-.note.is-collapsed .note-view {
-  display: none;
-}
-
-.note.is-collapsed .note-preview {
-  display: block;
-}
-
-.note-toggle {
-  width: 36px;
-  height: 28px;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  cursor: pointer;
-}
-
-.note-actions {
-  grid-column: 3;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.note-toggle {
-  font-size: 12px;
-}
-
-.add {
-  align-self: flex-start;
-  margin-top: 4px;
-  margin-left: 38px;
-  height: 52px;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 17px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.handle:focus-visible,
-.add:focus-visible,
-.note-add:focus-visible,
-.note-toggle:focus-visible,
-.note-save:focus-visible,
-.menu button:focus-visible {
-  outline: 2px solid rgba(242, 242, 242, 0.45);
-  outline-offset: 2px;
-}
-
-.menu {
-  position: fixed;
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  min-width: 120px;
-  max-height: min(200px, calc(100vh - 16px));
-  overflow: auto;
-  padding: 4px;
-  border: 1px solid rgba(242, 242, 242, 0.28);
-  border-radius: 0;
-  background: #000;
-  box-shadow: none;
-}
-
-.menu[hidden] {
-  display: none;
-}
-
-.menu button {
-  height: 36px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+button:hover,
+button:focus-visible {
   color: var(--text);
-  font: inherit;
-  font-size: 14px;
-  text-align: left;
-  cursor: pointer;
 }
 
-.menu button[hidden] {
-  display: none;
+button:focus-visible {
+  outline: 1px solid var(--line-focus);
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 
-.menu button:hover {
-  background: rgba(242, 242, 242, 0.08);
+button:disabled {
+  cursor: default;
+  color: rgba(245, 245, 247, 0.32);
 }
 
+.status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.status.is-visible {
+  position: static;
+  width: auto;
+  height: auto;
+  margin-top: 18px;
+  overflow: visible;
+  clip: auto;
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  white-space: normal;
+}
+
+@media (max-width: 640px) {
+  body {
+    padding-top: calc(var(--safe-top) + 48px);
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .editor {
+    padding: 18px 16px 32px;
+  }
+}
