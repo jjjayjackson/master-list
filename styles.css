@@ -50,6 +50,10 @@ body {
   border-color: var(--line-focus);
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .editor {
   display: block;
   padding: 22px 24px 34px;
@@ -116,6 +120,96 @@ button:focus-visible {
 button:disabled {
   cursor: default;
   color: rgba(245, 245, 247, 0.32);
+}
+
+button.dot {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  min-width: 32px;
+  padding: 0;
+  background: transparent;
+}
+
+button.dot::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(245, 245, 247, 0.62);
+}
+
+button.dot:hover::before,
+button.dot:focus-visible::before,
+button.dot[aria-pressed="true"]::before {
+  background: var(--text);
+}
+
+button.dot:disabled::before,
+button.dot:disabled:hover::before {
+  background: rgba(245, 245, 247, 0.28);
+}
+
+.selection-popup {
+  position: fixed;
+  z-index: 5;
+  width: max-content;
+  max-width: calc(100vw - 16px);
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.selection-popup:hover,
+.selection-popup:focus-visible {
+  border-color: var(--line-focus);
+  color: var(--text);
+}
+
+.holding {
+  min-height: 9.3em;
+}
+
+.holding-entry + .holding-entry {
+  margin-top: 26px;
+}
+
+.holding-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  letter-spacing: 0.011em;
+}
+
+.holding-remaining {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.holding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 18px;
+}
+
+.holding-actions button {
+  min-width: 0;
+  min-height: 32px;
+  padding: 0;
+  text-align: left;
+}
+
+.holding-empty {
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.04em;
 }
 
 .status {
