@@ -10,15 +10,21 @@
 </head>
 <body>
   <main class="frame">
-    <div class="editor">
-      <textarea id="page" rows="1" aria-label="Daily plans" spellcheck="true" autocomplete="off" autocapitalize="sentences" readonly></textarea>
+    <!-- This here is actaully what contains everything.-->
+
+    <div class="actualtextarea">
+      <!-- So this here is the area that the user will type into. It holds the actual text.-->
+      <textarea
+        id="whereIactuallytype"
+        rows="1">
+      </textarea>
+
     </div>
     <div class="actions">
       <button type="button" id="save" disabled>Save</button>
       <button type="button" id="clear" disabled>Clear</button>
     </div>
   </main>
-  <p id="status" class="status" role="status" aria-live="polite"></p>
   <script src="./vendor/supabase.js"></script>
   <script src="./supabase-config.js"></script>
   <script src="./script.js"></script>

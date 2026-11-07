@@ -4,56 +4,27 @@ const ROW_ID = 1;
 const supabase = window.supabase.createClient(
   window.MASTER_LIST_SUPABASE.url,
   window.MASTER_LIST_SUPABASE.key,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-      storage: {
-        getItem: () => null,
-        setItem: () => {},
-        removeItem: () => {},
-      },
-    },
-  },
 );
+/* All the above is hooking up my backend to Supabase. */
 
-const editor = document.getElementById("page");
+const thevariableforwhereIactuallytype = document.getElementById("whereIactuallytype");
 const saveButton = document.getElementById("save");
 const clearButton = document.getElementById("clear");
-const statusEl = document.getElementById("status");
 
 let ready = false;
-let cloudQueue = Promise.resolve();
-let labelTimer = 0;
+let returnToSaveTimer = null;
 
-function fit() {
-  editor.style.height = "auto";
-  editor.style.height = `${editor.scrollHeight}px`;
-}
-
-function setStatus(message, visible) {
-  statusEl.textContent = message;
-  statusEl.classList.toggle("is-visible", Boolean(visible));
-}
-
-function flashLabel(text) {
-  clearTimeout(labelTimer);
+function setButtonLabel(text) {
+  clearTimeout(returnToSaveTimer);
   saveButton.textContent = text;
-  setStatus(text, text !== "Saved");
-  labelTimer = setTimeout(() => {
+  returnToSaveTimer = setTimeout(() => {
     saveButton.textContent = "Save";
-    if (statusEl.textContent === text) setStatus("", false);
-  }, 1400);
+  }, 700);
 }
 
-function enqueue(task) {
-  const run = cloudQueue.then(task, task);
-  cloudQueue = run.then(
-    () => {},
-    () => {},
-  );
-  return run;
+function thisExtendsTheTextBox() {
+  thevariableforwhereIactuallytype.style.height = "auto";
+  thevariableforwhereIactuallytype.style.height = `${thevariableforwhereIactuallytype.scrollHeight}px`;
 }
 
 async function loadPage() {
@@ -63,47 +34,67 @@ async function loadPage() {
     .eq("id", ROW_ID)
     .maybeSingle();
   if (error) throw error;
-  return typeof data?.content === "string" ? data.content : "";
-}
+  
+  let content = "";
 
-function savePage(content) {
-  return enqueue(async () => {
-    const { error } = await supabase.from(TABLE).upsert({
-      id: ROW_ID,
-      content,
-      updated_at: new Date().toISOString(),
-    });
-    if (error) throw error;
-  });
+  if (data !== null && data !== undefined) {
+    const value = data.content;
+
+    if (typeof value === "string") {
+      content = value;
+    }
+  }
+
+  return content;
 }
 
 async function persist(content) {
+  // Disable the save button so the user can't click it again while saving
   saveButton.disabled = true;
+
+  // Disable the clear button for the same reason
   clearButton.disabled = true;
+
   try {
-    await savePage(content);
-    if (editor.value === content) flashLabel("Saved");
+    // Ask Supabase to save the content
+    const { error } = await supabase.from(TABLE).upsert({
+      id: ROW_ID,
+      content,
+    });
+
+    // If Supabase returned an error, throw it so we go to the catch block
+    if (error) throw error;
+
+    // If we got here, the save succeeded
+    setButtonLabel("Saved");
+    
   } catch (error) {
+    // Log the error for debugging
     console.error(error);
-    flashLabel("Not saved");
+
+    // Tell the user the save failed
+    setButtonLabel("Not saved");
   } finally {
+    // Always re-enable the save button, whether the save succeeded or failed
     saveButton.disabled = false;
+
+    // Always re-enable the clear button
     clearButton.disabled = false;
   }
 }
 
-editor.addEventListener("input", fit);
+thevariableforwhereIactuallytype.addEventListener("input", thisExtendsTheTextBox);
 
 saveButton.addEventListener("click", () => {
   if (!ready) return;
-  persist(editor.value);
+  persist(thevariableforwhereIactuallytype.value);
 });
 
 clearButton.addEventListener("click", () => {
   if (!ready) return;
-  editor.value = "";
-  fit();
-  editor.focus();
+  thevariableforwhereIactuallytype.value = "";
+  thisExtendsTheTextBox();
+  thevariableforwhereIactuallytype.focus();
   persist("");
 });
 
@@ -111,24 +102,22 @@ document.addEventListener("keydown", (event) => {
   if (!ready) return;
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
     event.preventDefault();
-    persist(editor.value);
+    persist(thevariableforwhereIactuallytype.value);
   }
 });
 
 async function boot() {
   try {
-    editor.value = await loadPage();
+    thevariableforwhereIactuallytype.value = await loadPage();
   } catch (error) {
     console.error(error);
-    setStatus("Couldn't load", true);
     return;
   }
   ready = true;
-  editor.readOnly = false;
   saveButton.disabled = false;
   clearButton.disabled = false;
-  fit();
-  editor.focus();
+  thisExtendsTheTextBox();
+  thevariableforwhereIactuallytype.focus();
 }
 
 boot();
