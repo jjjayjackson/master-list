@@ -1,6 +1,3 @@
-const TABLE = "master_list_page";
-const ROW_ID = 1;
-
 const supabase = window.supabase.createClient(
   window.MASTER_LIST_SUPABASE.url,
   window.MASTER_LIST_SUPABASE.key,
@@ -9,18 +6,9 @@ const supabase = window.supabase.createClient(
 
 const thevariableforwhereIactuallytype = document.getElementById("whereIactuallytype");
 const saveButton = document.getElementById("save");
-const clearButton = document.getElementById("clear");
 
 let ready = false;
 let returnToSaveTimer = null;
-
-function setButtonLabel(text) {
-  clearTimeout(returnToSaveTimer);
-  saveButton.textContent = text;
-  returnToSaveTimer = setTimeout(() => {
-    saveButton.textContent = "Save";
-  }, 700);
-}
 
 function thisExtendsTheTextBox() {
   thevariableforwhereIactuallytype.style.height = "auto";
@@ -29,9 +17,9 @@ function thisExtendsTheTextBox() {
 
 async function loadPage() {
   const { data, error } = await supabase
-    .from(TABLE)
+    .from("master_list_page")
     .select("content")
-    .eq("id", ROW_ID)
+    .eq("id", 1)
     .maybeSingle();
   if (error) throw error;
   
@@ -48,17 +36,22 @@ async function loadPage() {
   return content;
 }
 
+function setButtonLabel(text) {
+  clearTimeout(returnToSaveTimer);
+  saveButton.textContent = text;
+  returnToSaveTimer = setTimeout(() => {
+    saveButton.textContent = "Save";
+  }, 700);
+}
+
 async function persist(content) {
   // Disable the save button so the user can't click it again while saving
   saveButton.disabled = true;
 
-  // Disable the clear button for the same reason
-  clearButton.disabled = true;
-
   try {
     // Ask Supabase to save the content
-    const { error } = await supabase.from(TABLE).upsert({
-      id: ROW_ID,
+    const { error } = await supabase.from("master_list_page").upsert({
+      id: 1,
       content,
     });
 
@@ -67,7 +60,7 @@ async function persist(content) {
 
     // If we got here, the save succeeded
     setButtonLabel("Saved");
-    
+
   } catch (error) {
     // Log the error for debugging
     console.error(error);
@@ -77,25 +70,15 @@ async function persist(content) {
   } finally {
     // Always re-enable the save button, whether the save succeeded or failed
     saveButton.disabled = false;
-
-    // Always re-enable the clear button
-    clearButton.disabled = false;
   }
 }
 
 thevariableforwhereIactuallytype.addEventListener("input", thisExtendsTheTextBox);
 
 saveButton.addEventListener("click", () => {
+  // calls on persist, which actually saves the content inside
   if (!ready) return;
   persist(thevariableforwhereIactuallytype.value);
-});
-
-clearButton.addEventListener("click", () => {
-  if (!ready) return;
-  thevariableforwhereIactuallytype.value = "";
-  thisExtendsTheTextBox();
-  thevariableforwhereIactuallytype.focus();
-  persist("");
 });
 
 document.addEventListener("keydown", (event) => {
@@ -115,7 +98,6 @@ async function boot() {
   }
   ready = true;
   saveButton.disabled = false;
-  clearButton.disabled = false;
   thisExtendsTheTextBox();
   thevariableforwhereIactuallytype.focus();
 }
