@@ -7,12 +7,21 @@ const supabase = window.supabase.createClient(
 const thevariableforwhereIactuallytype = document.getElementById("whereIactuallytype");
 const saveButton = document.getElementById("save");
 
-let ready = false;
 let returnToSaveTimer = null;
 
 function thisExtendsTheTextBox() {
+
+  const textarea = thevariableforwhereIactuallytype;
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+
   thevariableforwhereIactuallytype.style.height = "auto";
   thevariableforwhereIactuallytype.style.height = `${thevariableforwhereIactuallytype.scrollHeight}px`;
+
+  textarea.setSelectionRange(start, end);
+  window.scrollTo(scrollX, scrollY);
 }
 
 async function loadPage() {
@@ -73,30 +82,36 @@ async function persist(content) {
   }
 }
 
+/* All of these below regard actual user input: input and extending  the text box, clicking to save */
+
 thevariableforwhereIactuallytype.addEventListener("input", thisExtendsTheTextBox);
+// Extends the textbox upon text entry. 
 
-saveButton.addEventListener("click", () => {
-  // calls on persist, which actually saves the content inside
-  if (!ready) return;
-  persist(thevariableforwhereIactuallytype.value);
-});
-
-document.addEventListener("keydown", (event) => {
-  if (!ready) return;
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+thevariableforwhereIactuallytype.addEventListener("keydown", (event) => {
+  if (event.key === "Tab") {
     event.preventDefault();
-    persist(thevariableforwhereIactuallytype.value);
+
+    const textarea = event.currentTarget;
+    textarea.setRangeText("    ", textarea.selectionStart,        textarea.selectionEnd, "end");
+
+    const inputEvent = new Event("input");
+    textarea.dispatchEvent(inputEvent);
   }
 });
 
+saveButton.addEventListener("click", () => {
+  persist(thevariableforwhereIactuallytype.value);
+});
+// This one actually saves shit when you click save. 
+
 async function boot() {
+  // initializes everything not strictly necessary, but I don't feel like removing it lol 
   try {
     thevariableforwhereIactuallytype.value = await loadPage();
   } catch (error) {
     console.error(error);
     return;
   }
-  ready = true;
   saveButton.disabled = false;
   thisExtendsTheTextBox();
   thevariableforwhereIactuallytype.focus();
