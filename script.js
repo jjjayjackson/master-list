@@ -5,7 +5,7 @@ const supabase = window.supabase.createClient(
 /* All the above is hooking up my backend to Supabase. */
 
 const thevariableforwhereIactuallytype = document.getElementById("whereIactuallytype");
-const saveButton = document.getElementById("save");
+// const saveButton = document.getElementById("save");
 
 let returnToSaveTimer = null;
 
@@ -45,6 +45,7 @@ async function loadPage() {
   return content;
 }
 
+/*
 function setButtonLabel(text) {
   clearTimeout(returnToSaveTimer);
   saveButton.textContent = text;
@@ -52,10 +53,11 @@ function setButtonLabel(text) {
     saveButton.textContent = "Save";
   }, 700);
 }
+  */
 
-async function persist(content) {
+async function save(content) {
   // Disable the save button so the user can't click it again while saving
-  saveButton.disabled = true;
+  // saveButton.disabled = true;
 
   try {
     // Ask Supabase to save the content
@@ -68,21 +70,45 @@ async function persist(content) {
     if (error) throw error;
 
     // If we got here, the save succeeded
-    setButtonLabel("Saved");
+   // setButtonLabel("Saved");
 
   } catch (error) {
     // Log the error for debugging
     console.error(error);
 
     // Tell the user the save failed
-    setButtonLabel("Not saved");
+   // setButtonLabel("Not saved");
   } finally {
     // Always re-enable the save button, whether the save succeeded or failed
-    saveButton.disabled = false;
+   // saveButton.disabled = false;
   }
 }
 
 /* All of these below regard actual user input: input and extending  the text box, clicking to save */
+
+document.addEventListener("keydown", (event) => {
+
+  // Check whether Command or Control is being held down
+  const modifierKeyIsPressed = event.metaKey || event.ctrlKey;
+
+  // Check whether the S key was pressed
+  const sKeyWasPressed = event.key.toLowerCase() === "s";
+
+  // Check whether both conditions are true
+  if (modifierKeyIsPressed && sKeyWasPressed) {
+
+    // Prevent the browser's default Save behavior
+    event.preventDefault();
+
+    // Get the current text inside the textarea
+    const content = thevariableforwhereIactuallytype.value;
+
+    // Save the content to Supabase
+    save(content);
+
+  }
+
+});
 
 thevariableforwhereIactuallytype.addEventListener("input", thisExtendsTheTextBox);
 // Extends the textbox upon text entry. 
@@ -92,17 +118,39 @@ thevariableforwhereIactuallytype.addEventListener("keydown", (event) => {
     event.preventDefault();
 
     const textarea = event.currentTarget;
-    textarea.setRangeText("    ", textarea.selectionStart,        textarea.selectionEnd, "end");
+    textarea.setRangeText("    ", textarea.selectionStart, textarea.selectionEnd, "end");
 
     const inputEvent = new Event("input");
     textarea.dispatchEvent(inputEvent);
   }
 });
 
-saveButton.addEventListener("click", () => {
-  persist(thevariableforwhereIactuallytype.value);
-});
+// Functions responsible for saving content. 
+/* saveButton.addEventListener("click", () => {
+  save(thevariableforwhereIactuallytype.value);
+}); */
 // This one actually saves shit when you click save. 
+
+document.addEventListener("visibilitychange", () => {
+  // for when I close it or something
+  if (document.visibilityState === "hidden") {
+    save(thevariableforwhereIactuallytype.value);
+  }
+});
+
+function debouncing() {
+  let saveTimer = null;
+
+  thevariableforwhereIactuallytype.addEventListener("input", () => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      save(thevariableforwhereIactuallytype.value);
+    }, 300);
+  });
+}
+
+// Call it once, when the element exists
+debouncing();
 
 async function boot() {
   // initializes everything not strictly necessary, but I don't feel like removing it lol 
@@ -112,7 +160,7 @@ async function boot() {
     console.error(error);
     return;
   }
-  saveButton.disabled = false;
+  // saveButton.disabled = false;
   thisExtendsTheTextBox();
   thevariableforwhereIactuallytype.focus();
 }

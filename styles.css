@@ -1,11 +1,10 @@
 :root {
-  --bg: #000;
+  --background: #000;
   --text: #f5f5f7;
-  --muted: rgba(245, 245, 247, 0.72);
-  --line: rgba(245, 245, 247, 0.38);
-  --line-focus: rgba(245, 245, 247, 0.78);
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --line: rgba(245, 245, 247, 0.78);
+  --font-family: system-ui, sans-serif; 
+  --font-size: 17px; 
+  --line-height: 1.55; 
   color-scheme: dark;
 }
 
@@ -15,43 +14,26 @@
   padding: 0;
 }
 
-html,
-body {
-  min-height: 100%;
-  background: var(--bg);
-  color: var(--text);
-}
-
 body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding:
-    calc(var(--safe-top) + 11vh)
-    24px
-    calc(var(--safe-bottom) + 72px);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
-  font-size: 17px;
-  line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
-  -webkit-tap-highlight-color: transparent;
+  padding: 11vh 24px 72px;
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  line-height: var(--line-height);
 }
 
 .frame {
-  position: relative;
   width: min(680px, 100%);
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: var(--bg);
-  transition: border-color 160ms ease;
-}
-
-.frame:focus-within {
-  border-color: var(--line-focus);
+  background: var(--background);
 }
 
 .actualtextarea {
-  display: block;
   padding: 22px 24px 34px;
 }
 
@@ -61,71 +43,14 @@ textarea {
   min-height: 9.3em;
   border: 0;
   background: transparent;
-  color: inherit;
+  color: var(--text);
   caret-color: var(--text);
-  font: inherit;
-  letter-spacing: 0.011em;
-  resize: none;
+  font-family: var(--font-family);
   overflow: hidden;
-  outline: none;
-}
-
-textarea[readonly] {
-  cursor: text;
+  outline: 0;
+  resize: none;
 }
 
 textarea::selection {
   background: rgba(245, 245, 247, 0.22);
-}
-
-.actions {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  padding: 0 14px;
-  background: var(--bg);
-  transform: translate(-50%, 50%);
-}
-
-button {
-  min-width: 4.6em;
-  min-height: 40px;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 13px;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-}
-
-button:hover,
-button:focus-visible {
-  color: var(--text);
-}
-
-button:focus-visible {
-  outline: 1px solid var(--line-focus);
-  outline-offset: 3px;
-  border-radius: 6px;
-}
-
-button:disabled {
-  cursor: default;
-  color: rgba(245, 245, 247, 0.32);
-}
-
-@media (max-width: 640px) {
-  body {
-    padding-top: calc(var(--safe-top) + 48px);
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
-  .actualtextarea {
-    padding: 18px 16px 32px;
-  }
 }
