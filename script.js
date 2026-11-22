@@ -1,11 +1,15 @@
+// Top-level declarations
+
 const supabase = window.supabase.createClient(
   window.MASTER_LIST_SUPABASE.url,
   window.MASTER_LIST_SUPABASE.key,
 );
-/* All the above is hooking up my backend to Supabase. */
+
+const LOCAL_STORAGE_KEY = "master-list-content";
 
 const thevariableforwhereIactuallytype = document.getElementById("whereIactuallytype");
 
+// Functions 
 function thisExtendsTheTextBox() {
 
   const textarea = thevariableforwhereIactuallytype;
@@ -20,8 +24,6 @@ function thisExtendsTheTextBox() {
   textarea.setSelectionRange(start, end);
   window.scrollTo(scrollX, scrollY);
 }
-
-const LOCAL_STORAGE_KEY = "master-list-content";
 
 function loadFromLocalStorage() {
   return localStorage.getItem(LOCAL_STORAGE_KEY) ?? "";
@@ -50,34 +52,9 @@ async function save(content) {
     console.error(error);
   }
 }
-// This here actually saves the content
 
-/* All of these below regard actual user input: input and extending  the text box, clicking to save */
-
-document.addEventListener("keydown", (event) => {
-
-  // Check whether Command or Control is being held down
-  const modifierKeyIsPressed = event.metaKey || event.ctrlKey;
-
-  // Check whether the S key was pressed
-  const sKeyWasPressed = event.key.toLowerCase() === "s";
-
-  // Check whether both conditions are true
-  if (modifierKeyIsPressed && sKeyWasPressed) {
-
-    // Prevent the browser's default Save behavior
-    event.preventDefault();
-
-    // Get the current text inside the textarea
-    const content = thevariableforwhereIactuallytype.value;
-
-    save(content);
-
-  }
-
-});
-
-
+// Event Listeners & Handlers
+// This one is responsible for the persistent indentation. 
 thevariableforwhereIactuallytype.addEventListener("keydown", (event) => {
 
   if (event.key === "Enter") {
@@ -108,8 +85,8 @@ thevariableforwhereIactuallytype.addEventListener("keydown", (event) => {
   }
 
 });
-// This here is for command + S saving the data. 
 
+// This here is responsible for tabbing.
 thevariableforwhereIactuallytype.addEventListener("keydown", (event) => {
   if (event.key === "Tab") {
     event.preventDefault();
@@ -121,17 +98,8 @@ thevariableforwhereIactuallytype.addEventListener("keydown", (event) => {
     textarea.dispatchEvent(inputEvent);
   }
 });
-// This here is responsible for tabbing.
 
 thevariableforwhereIactuallytype.addEventListener("input", thisExtendsTheTextBox);
-// Extends the textbox upon text entry. 
-
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") {
-    save(thevariableforwhereIactuallytype.value);
-  }
-});
-// for when I close it or something
 
 function debouncing() {
   let saveTimer = null;
@@ -140,12 +108,10 @@ function debouncing() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       save(thevariableforwhereIactuallytype.value);
-    }, 300);
+    }, 200);
   });
 }
-// Wait 300 milliseconds until input has stopped to save.
 
-// Call it once, when the element exists
 debouncing();
 
 function boot() {
