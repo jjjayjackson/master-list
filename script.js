@@ -76,6 +76,38 @@ document.addEventListener("keydown", (event) => {
   }
 
 });
+
+
+thevariableforwhereIactuallytype.addEventListener("keydown", (event) => {
+
+  if (event.key === "Enter") {
+
+    const textarea = event.currentTarget;
+
+    const cursorPosition = textarea.selectionStart;
+
+    const textBeforeCursor = textarea.value.slice(0, cursorPosition);
+
+    const currentLine = textBeforeCursor.split("\n").pop();
+
+    const indentation = currentLine.match(/^ */)[0];
+
+    event.preventDefault();
+
+    textarea.setRangeText(
+      "\n" + indentation,
+      cursorPosition,
+      textarea.selectionEnd,
+      "end"
+    );
+
+		const inputEvent = new Event("input");
+
+		textarea.dispatchEvent(inputEvent);
+
+  }
+
+});
 // This here is for command + S saving the data. 
 
 thevariableforwhereIactuallytype.addEventListener("keydown", (event) => {
