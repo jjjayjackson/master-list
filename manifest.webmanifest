@@ -1,0 +1,13 @@
+{
+  "name": "Master List",
+  "short_name": "Master List",
+  "start_url": "./",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

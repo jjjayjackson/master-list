@@ -26,30 +26,142 @@ function thisExtendsTheTextBox() {
 }
 
 function loadFromLocalStorage() {
-  return localStorage.getItem(LOCAL_STORAGE_KEY) ?? "";
+  const savedContent =
+      localStorage.getItem(LOCAL_STORAGE_KEY);
+
+  if (savedContent === null) {
+      return null;
+  }
+  return JSON.parse(savedContent);
 }
 
-function saveToLocalStorage(content) {
-  localStorage.setItem(LOCAL_STORAGE_KEY, content);
+function saveToLocalStorage(content, updatedAt) {
+
+  const dataToSave = {
+      content: content,
+      updatedAt: updatedAt
+  };
+
+  localStorage.setItem(
+      LOCAL_STORAGE_KEY,
+      JSON.stringify(dataToSave)
+  );
+
 }
 
-async function uploadToSupabase(content) {
+async function uploadToSupabase(content, updatedAt) {
   const { error } = await supabase
     .from("master_list_page")
     .upsert({
       id: 1,
       content,
+      updated_at: updatedAt
     });
 
   if (error) throw error;
 }
 
+
+async function loadFromSupabase() {
+
+  const { data, error } = await supabase
+      .from("master_list_page")
+      .select("id, content, updated_at")
+      .eq("id", 1)
+      .maybeSingle();
+
+  if (error) throw error;
+
+  return data;
+
+}
+
+// This here would be the synchronization function. 
+async function synchronizeWithSupabase() {
+
+  const localCopy = loadFromLocalStorage();
+
+  const cloudCopy = await loadFromSupabase();
+
+
+  if (localCopy === null && cloudCopy === null) {
+      return "";
+  }
+// If both are null, stop and don't do anything. 
+
+  if (localCopy !== null && cloudCopy === null) {
+
+      await uploadToSupabase(
+          localCopy.content,
+          localCopy.updatedAt
+      );
+
+      return localCopy.content;
+
+  }
+// If local is good but cloud sucks, upload the local then give back the local. 
+
+  if (localCopy === null && cloudCopy !== null) {
+
+      saveToLocalStorage(
+          cloudCopy.content,
+          cloudCopy.updated_at
+      );
+
+      return cloudCopy.content;
+
+  }
+
+/* if local is bad, but cloud is good, save the cloud to the localStorage then give back the cloud copy. 
+
+This would be the inverse of the first one. 
+*/
+
+  const localTimestamp =
+      new Date(localCopy.updatedAt).getTime();
+
+  const cloudTimestamp =
+      new Date(cloudCopy.updated_at).getTime();
+
+
+  if (cloudTimestamp > localTimestamp) {
+
+      saveToLocalStorage(
+          cloudCopy.content,
+          cloudCopy.updated_at
+      );
+
+      return cloudCopy.content;
+  }
+  
+  // If the cloud copy is newer than the local, save the cloud to the localStorage and return it as well. 
+
+
+  if (localTimestamp > cloudTimestamp) {
+
+      await uploadToSupabase(
+          localCopy.content,
+          localCopy.updatedAt
+      );
+
+      return localCopy.content;
+
+  }
+// If the other way, then upload the local to the cloud
+
+  return localCopy.content;
+
+}
+
 async function save(content) {
+  const updatedAt = new Date().toISOString();
+  saveToLocalStorage(content, updatedAt);
+
   try {
-    saveToLocalStorage(content);
-    await uploadToSupabase(content);
+      await uploadToSupabase(content, updatedAt);
+
   } catch (error) {
-    console.error(error);
+      console.error(error);
   }
 }
 
@@ -114,16 +226,40 @@ function debouncing() {
 
 debouncing();
 
-function boot() {
+async function boot() {
+
   try {
-    thevariableforwhereIactuallytype.value = loadFromLocalStorage();
+
+      const content = await synchronizeWithSupabase();
+
+      thevariableforwhereIactuallytype.value = content;
+
   } catch (error) {
-    console.error(error);
-    return;
+
+      console.error(error);
+
+      const localCopy = loadFromLocalStorage();
+
+      if (localCopy !== null) {
+
+        thevariableforwhereIactuallytype.value =
+            localCopy.content;
+    
+      } else {
+    
+        thevariableforwhereIactuallytype.value = "";
+    
+    }
   }
 
   thisExtendsTheTextBox();
+
   thevariableforwhereIactuallytype.focus();
+
 }
 
 boot();
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js");
+}
